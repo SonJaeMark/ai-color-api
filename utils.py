@@ -25,7 +25,7 @@ def generate_scale(hex_color):
     steps = {
         50: 0.95, 100: 0.85, 200: 0.75, 300: 0.65,
         400: 0.55, 500: l,
-        600: 0.45, 700: 0.35, 800: 0.25, 900: 0.15
+        600: 0.45, 700: 0.35, 800: 0.25, 900: 0.15, 950: 0.08
     }
 
     scale = {}
@@ -82,8 +82,7 @@ def soften_color(hex_color):
     r, g, b = hex_to_rgb_float(hex_color)
     h, l, s = colorsys.rgb_to_hls(r, g, b)
 
-    s = max(0.1, s * 0.3)  # reduce saturation
-
+    s = max(0.1, s * 0.3)
     return rgb_float_to_hex(colorsys.hls_to_rgb(h, l, s))
 
 def generate_accents(primary):
@@ -106,28 +105,21 @@ def generate_accents(primary):
     return accents
 
 # -----------------------------
-# MAIN PALETTE GENERATOR
+# ORIGINAL GENERATOR (KEEP)
 # -----------------------------
 
 def generate_palette(primary):
     brightness = get_brightness(primary)
-
-    # detect mode
     mode = "dark" if brightness < 128 else "light"
 
-    # generate scale
     scale = generate_scale(primary)
 
-    # background selection + softening
     if mode == "light":
         background = soften_color(scale[50])
     else:
-        background = soften_color(scale[900])
+        background = soften_color(scale[950])
 
-    # contrast-aware text
     text = pick_text_color(background)
-
-    # smart accents
     accents = generate_accents(primary)
 
     return {
@@ -137,4 +129,63 @@ def generate_palette(primary):
         "text": text,
         "accents": accents,
         "scale": scale
+    }
+
+# -----------------------------
+# NEW GENERATOR (V2)
+# -----------------------------
+
+def generate_palette_v2(primary, secondary=None, mode=None):
+    # detect mode if not provided
+    if mode is None:
+        brightness = get_brightness(primary)
+        mode = "dark" if brightness < 128 else "light"
+
+    # primary scale
+    primary_scale = generate_scale(primary)
+
+    # secondary
+    if secondary:
+        secondary_scale = generate_scale(secondary)
+    else:
+        r, g, b = hex_to_rgb_float(primary)
+        h, l, s = colorsys.rgb_to_hls(r, g, b)
+
+        sec_h = (h + 0.12) % 1.0
+        sec_rgb = colorsys.hls_to_rgb(sec_h, l, s)
+        secondary = rgb_float_to_hex(sec_rgb)
+        secondary_scale = generate_scale(secondary)
+
+    # background
+    if mode == "light":
+        background = soften_color(primary_scale[50])
+    else:
+        background = soften_color(primary_scale[950])
+
+    # text
+    text = pick_text_color(background)
+
+    # accents + scales
+    accents = generate_accents(primary)
+    accent_scales = []
+
+    for acc in accents:
+        accent_scales.append({
+            "base": acc,
+            "scale": generate_scale(acc)
+        })
+
+    return {
+        "mode": mode,
+        "primary": {
+            "base": primary,
+            "scale": primary_scale
+        },
+        "secondary": {
+            "base": secondary,
+            "scale": secondary_scale
+        },
+        "background": background,
+        "text": text,
+        "accents": accent_scales
     }
