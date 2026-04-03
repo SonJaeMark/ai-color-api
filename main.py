@@ -1,9 +1,12 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import Optional
+from config import setup_cors
 from utils import generate_palette_v2
 
+
 app = FastAPI()
+setup_cors(app)
 
 class ColorInput(BaseModel):
     primary: str
